@@ -43,6 +43,19 @@ class WWSC_Plugin
     add_action('woocommerce_product_query', array($this, 'products_by_user_role'));
   }
 
+  /**
+	 * Filters all the products of the store.
+	 *
+	 * Shows and hides the products depending logged in user role:
+	 * - if is logged in and is B2B Retail, the user will see all the products
+	 * - if is logged in and is not a B2B Retail, the user will only see the products that have SKU starting with 102-
+	 * - if is logged out, the user will see all the products without the ones that have SKU starting with 101-
+	 *
+	 * @since 1.0.0
+	 *
+	 * @see add_action function is relied on
+	 * @link https://developer.wordpress.org/reference/functions/add_action/
+	 */
   public function products_by_user_role( $query )
   {
     if (is_user_logged_in()) {
