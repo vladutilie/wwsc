@@ -40,6 +40,33 @@ class WWSC_Plugin
     add_action('plugins_loaded', array($this, 'i18n'));
     add_action('widgets_init', array($this, 'register_widget'));
     add_action('wp_ajax_AJAX_actions', array($this, 'AJAX_actions'));
+    add_action('woocommerce_product_query', array($this, 'products_by_user_role'));
+  }
+
+  public function products_by_user_role( $query )
+  {
+    if (is_user_logged_in()) {
+      $current_user = wp_get_current_user();
+      if (! in_array('b2b_retail', $current_user->roles)) {
+        // shows all the products that have sku with 102-
+        $query->set('meta_query', array(
+          array(
+            'key' => '_sku',
+            'value' => '^102-',
+            'compare' => 'REGEXP',
+          )
+        ) );
+      }
+    } else {
+      // hides all the products with sku 101-
+      $query->set('meta_query', array(
+        array(
+          'key' => '_sku',
+          'value' => '^101-',
+          'compare' => 'NOT REGEXP',
+        )
+      ));
+    }
   }
 
   /**
