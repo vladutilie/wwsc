@@ -79,6 +79,7 @@ class WWSC_Widget extends WP_Widget
 	*/
  private function enqueue() {
 	 wp_register_script('WWSC-AJAX', plugins_url('../public/js/main.min.js', __FILE__), array('jquery'), '1.0.0', true);
+	 wp_register_style( 'WWSC-CSS', plugins_url( '../public/css/style.min.css', __FILE__ ), array(), '1.0.0', false );
 	 $args = array(
 		 'nonce' => wp_create_nonce('WWSC-AJAX-nonce'),
 		 'ajaxurl' => admin_url('admin-ajax.php'),
@@ -91,5 +92,6 @@ class WWSC_Widget extends WP_Widget
 	 wp_localize_script('WWSC-AJAX', 'wwsc_object', $args);
 	 wp_enqueue_script('WWSC-AJAX');
 	 wp_enqueue_script('wc-add-to-cart-variation');
+	 wp_enqueue_style( 'WWSC-CSS' );
  }
 } // End WWSC_Widget class

@@ -11,11 +11,17 @@ jQuery(document).ready(function($) {
       'action': 'AJAX_actions',
       'nonce': wwsc_object.nonce,
     },
+    beforeSend: function() {
+      $('.wwsc-widget').html('<div class="loader"></div>');
+    },
     success: function(response) {
+      $('.wwsc-widget').html('<div class="loader"></div>');
       $('.wwsc-widget').html(response);
     },
     complete: function() {
       $.getScript(wwsc_object.wc_url);
+      $('.loader').fadeOut(1000);
+      $('.wwsc-widget>ul').fadeIn(1000);
     },
     error: function(errorThrown) {
       console.log(errorThrown);

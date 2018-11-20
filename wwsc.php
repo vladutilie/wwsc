@@ -109,10 +109,10 @@ class WWSC_Plugin
 	public function AJAX_actions()
   {
 		check_ajax_referer('WWSC-AJAX-nonce', 'nonce');
-    echo '<ul class="products">';
+    echo '<ul class="products" style="display: none;">';
     $args = array(
       'post_type' => 'product',
-      'posts_per_page' => 5
+      'posts_per_page' => 20
     );
     if (is_user_logged_in()) {
       $current_user = wp_get_current_user();
