@@ -77,11 +77,12 @@ class WWSC_Widget extends WP_Widget
 	* @see wp_enqueue_script function is relied on
 	* @link https://developer.wordpress.org/reference/functions/wp_enqueue_script/
 	*/
- private function enqueue() {
-	 wp_register_script('WWSC-AJAX', plugins_url('../public/js/main.min.js', __FILE__), array('jquery'), '1.0.0', true);
-	 wp_register_style( 'WWSC-CSS', plugins_url( '../public/css/style.min.css', __FILE__ ), array(), '1.0.0', false );
+ private function enqueue()
+ {
+	 wp_register_script('WWSC-widget-content', plugins_url('../public/js/main.min.js', __FILE__), array('jquery'), '1.0.0', true);
+	 wp_register_style('WWSC-widget-CSS', plugins_url('../public/css/style.min.css', __FILE__), array(), '1.0.0', false);
 	 $args = array(
-		 'nonce' => wp_create_nonce('WWSC-AJAX-nonce'),
+		 'nonce' => wp_create_nonce('WWSC-widget-nonce'),
 		 'ajaxurl' => admin_url('admin-ajax.php'),
 		 'wc_url' => plugin_dir_url(__FILE__) .'../../woocommerce/assets/js/frontend/add-to-cart-variation.min.js',
 		 'msgs' => array(
@@ -89,9 +90,9 @@ class WWSC_Widget extends WP_Widget
 			 'failure' => __('An error has been occurred during adding your product to the cart. Please try again.', 'wwsc'),
 		 )
 	);
-	 wp_localize_script('WWSC-AJAX', 'wwsc_object', $args);
-	 wp_enqueue_script('WWSC-AJAX');
+	 wp_localize_script('WWSC-widget-content', 'wwsc_object', $args);
+	 wp_enqueue_script('WWSC-widget-content');
 	 wp_enqueue_script('wc-add-to-cart-variation');
-	 wp_enqueue_style( 'WWSC-CSS' );
+	 wp_enqueue_style('WWSC-widget-CSS');
  }
 } // End WWSC_Widget class
