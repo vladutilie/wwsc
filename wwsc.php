@@ -150,7 +150,6 @@ class WWSC_Plugin
 			while ($wc_query->have_posts()) {
         $wc_query->the_post();
         global $product;
-				//wc_get_template_part('content', 'product');
         echo '<div class="product">';
           echo '<a href="'. get_permalink( $wc_query->post->ID ) .'" class="woocommerce-LoopProduct-link woocommerce-loop-product__link">';
           echo woocommerce_get_product_thumbnail();
@@ -400,7 +399,9 @@ class WWSC_Plugin
       return true;
     } else if (!is_user_logged_in() && $starting === '101-') {
       return false;
-    } else return false;
+    } else {
+      return false;
+    }
   }
 }
 $wwsc = new WWSC_Plugin();
