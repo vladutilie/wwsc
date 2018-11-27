@@ -40,20 +40,62 @@ class WWSC_Plugin
 	 * @link https://developer.wordpress.org/reference/functions/remove_action/
 	 */
   public function __construct() {
-    add_action('plugins_loaded', array($this, 'i18n'));
-    add_action('widgets_init', array($this, 'register_widget'));
-    add_action('pre_get_posts', array($this, 'products_by_user_role'));
+    // Init actions
     add_action('init', array($this, 'remove_qty_add_to_cart'));
+    add_action('widgets_init', array($this, 'register_widget'));
+    add_action('plugins_loaded', array($this, 'i18n'));
 
+    // Enqueue scripts
     add_action('wp_ajax_AJAX_actions', array($this, 'AJAX_actions'));
     add_action('wp_ajax_nopriv_AJAX_actions', array($this, 'AJAX_actions'));
-
     add_action('admin_enqueue_scripts', array($this, 'admin_enqueue'));
     add_action('wp_ajax_variations_actions', array($this, 'variations_actions'));
 
+    // WooCommerce Hooks
+    add_action('woocommerce_product_query', array($this, 'products_by_user_role'));
     remove_action('woocommerce_after_shop_loop_item', 'woocommerce_template_loop_add_to_cart', 10);
     add_action('woocommerce_after_shop_loop_item', array($this, 'new_template_loop_add_to_cart'));
+    add_filter('woocommerce_variation_is_visible', array($this, 'filter_variations'), 10, 4);
+    add_filter('woocommerce_get_variation_price', array($this, 'filter_variations'), 10, 4);
+    add_filter('woocommerce_get_variation_sale_price', array($this, 'filter_variations'), 10, 4);
+    add_filter('woocommerce_get_variation_regular_price', array($this, 'filter_variations'), 10, 4);
   }
+
+  /**
+   * Removes the quantity input and add to cart button.
+   *
+   * If the user is not logged in, this method removes the qty input
+   * and add to cart button from the WC template.
+   *
+   * @since: 1.0.0
+   *
+   * @see is_user_logged_in function is relied on
+	 * @link https://developer.wordpress.org/reference/functions/is_user_logged_in/
+   *
+   * @see remove_action function is relied on
+	 * @link https://developer.wordpress.org/reference/functions/remove_action/
+   */
+  public function remove_qty_add_to_cart()
+  {
+    if (! is_user_logged_in()) {
+      remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30);
+    }
+  }
+
+  /**
+   * Register widget.
+   *
+   * Register the plugins's Widget with WordPress Widgets API.
+   *
+   * @since: 1.0.0
+   *
+   * @see register_widget function
+   * @link https://developer.wordpress.org/reference/functions/wp_add_privacy_policy_content/
+   */
+   public function register_widget()
+   {
+     register_widget('WWSC_Widget');
+   }
 
   /**
 	 * Internationalization method.
@@ -74,21 +116,6 @@ class WWSC_Plugin
   {
     load_plugin_textdomain('wwsc', FALSE, dirname(plugin_basename(__FILE__)) . '/lang');
 	}
-
-  /**
-   * Register widget.
-   *
-   * Register the plugins's Widget with WordPress Widgets API.
-   *
-   * @since: 1.0.0
-   *
-   * @see register_widget function
-   * @link https://developer.wordpress.org/reference/functions/wp_add_privacy_policy_content/
-   */
-   public function register_widget()
-   {
-     register_widget('WWSC_Widget');
-   }
 
   /**
 	 * AJAX functionalities.
@@ -113,90 +140,38 @@ class WWSC_Plugin
   {
 		check_ajax_referer('WWSC-widget-nonce', 'nonce');
     echo '<ul class="products" style="display: none;">';
+    $product_id = $_GET['product_id'];
     $args = array(
+      'p' => $product_id,
       'post_type' => 'product',
-      'posts_per_page' => get_option('posts_per_page'),
     );
 		$wc_query = new WP_Query($args);
 		if ($wc_query->have_posts()) {
 			while ($wc_query->have_posts()) {
         $wc_query->the_post();
-				wc_get_template_part('content', 'product');
+        global $product;
+				//wc_get_template_part('content', 'product');
+        echo '<div class="product">';
+          echo '<a href="'. get_permalink( $wc_query->post->ID ) .'" class="woocommerce-LoopProduct-link woocommerce-loop-product__link">';
+          echo woocommerce_get_product_thumbnail();
+            the_title('<h2 class="woocommerce-loop-product__title">', '</h2>');
+            echo '<span class="price">'. $product->get_price_html() .'</span>';
+          echo '</a><br />';
+
+          echo '<div class="product_meta">
+            <span class="sku_wrapper">'. esc_html_e( 'SKU:', 'woocommerce' ) .'
+              <span class="sku">';
+          echo ( $sku = $product->get_sku() ) ? $sku : esc_html__( 'N/A', 'woocommerce' );
+          echo '</span></span></div>';
+          $this->new_template_loop_add_to_cart();
+        echo '</div>';
 			}
 		} else {
-			_e('No products found');
+			_e('The product ID does not exist.', 'wwsc');
 		}
 		wp_reset_postdata();
     echo '</ul><!-- .products -->';
     die();
-  }
-
-  /**
-	 * Filters all the products of the store: for store page, widget and dashboard.
-	 *
-	 * Shows and hides the products depending logged in user role:
-	 *   (a) if is logged in and is B2B Retail, the user will see all the products;
-	 *   (b) if is logged in and is not a B2B Retail, the user will only see the products that have SKU starting with 102-;
-	 *   (c) if is logged out, the user will see all the products without the ones that have SKU starting with 101-.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @see is_user_logged_in function is relied on
-	 * @link https://developer.wordpress.org/reference/functions/is_user_logged_in/
-	 *
-	 * @see wp_get_current_user function is relied on
-	 * @link https://developer.wordpress.org/reference/functions/wp_get_current_user/
-	 *
-	 * @param object $query The query of the WC loop.
-	 */
-  public function products_by_user_role($query)
-  {
-    $meta_query = (array)$query->get('meta_query');
-    $post_type = $query->get('post_type');
-    if ('product' != $post_type) {
-      return;
-    }
-    if (is_user_logged_in()) {
-      // [by default] (a) the meta query shows all products
-      $current_user = wp_get_current_user();
-      if (!in_array('b2b_retail', $current_user->roles)) {
-        // (b) shows all the products that have sku with 102-
-        $meta_query[] = array(
-          'key' => '_sku',
-          'value' => '^102-',
-          'compare' => 'REGEXP',
-        );
-      }
-    } else {
-      // (c) hides all the products with sku 101-
-      $meta_query[] = array(
-        'key' => '_sku',
-        'value' => '^101-',
-        'compare' => 'NOT REGEXP',
-      );
-    }
-    $query->set('meta_query', $meta_query);
-  }
-
-  /**
-   * Removes the quantity input and add to cart button.
-   *
-   * If the user is not logged in, this method removes the qty input
-   * and add to cart button from the WC template.
-   *
-   * @since: 1.0.0
-   *
-   * @see is_user_logged_in function is relied on
-	 * @link https://developer.wordpress.org/reference/functions/is_user_logged_in/
-   *
-   * @see remove_action function is relied on
-	 * @link https://developer.wordpress.org/reference/functions/remove_action/
-   */
-  public function remove_qty_add_to_cart()
-  {
-    if (! is_user_logged_in()) {
-      remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30);
-    }
   }
 
   /**
@@ -325,6 +300,53 @@ class WWSC_Plugin
   }
 
   /**
+	 * Filters all the products of the store: for store page, widget and dashboard.
+	 *
+	 * Shows and hides the products depending logged in user role:
+	 *   (a) if is logged in and is B2B Retail, the user will see all the products;
+	 *   (b) if is logged in and is not a B2B Retail, the user will only see the products that have SKU starting with 102-;
+	 *   (c) if is logged out, the user will see all the products without the ones that have SKU starting with 101-.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @see is_user_logged_in function is relied on
+	 * @link https://developer.wordpress.org/reference/functions/is_user_logged_in/
+	 *
+	 * @see wp_get_current_user function is relied on
+	 * @link https://developer.wordpress.org/reference/functions/wp_get_current_user/
+	 *
+	 * @param object $query The query of the WC loop.
+	 */
+  public function products_by_user_role($query)
+  {
+    $meta_query = (array)$query->get('meta_query');
+    $post_type = $query->get('post_type');
+    if ('product' != $post_type) {
+      return;
+    }
+    if (is_user_logged_in()) {
+      // [by default] (a) the meta query shows all products
+      $current_user = wp_get_current_user();
+      if (!in_array('b2b_retail', $current_user->roles)) {
+        // (b) shows all the products that have sku with 102-
+        $meta_query[] = array(
+          'key' => '_sku',
+          'value' => '^102-',
+          'compare' => 'REGEXP',
+        );
+      }
+    } else {
+      // (c) hides all the products with sku 101-
+      $meta_query[] = array(
+        'key' => '_sku',
+        'value' => '^101-',
+        'compare' => 'NOT REGEXP',
+      );
+    }
+    $query->set('meta_query', $meta_query);
+  }
+
+  /**
    * Replace the WC product template.
    *
    * Checks if the product is not variable and if the user is logged in
@@ -340,6 +362,11 @@ class WWSC_Plugin
   public function new_template_loop_add_to_cart()
   {
     global $product;
+    echo '<div class="product_meta">
+    <span class="sku_wrapper">'. esc_html_e( 'SKU:', 'woocommerce' ) .'
+    <span class="sku">';
+    echo ( $sku = $product->get_sku() ) ? $sku : esc_html__( 'N/A', 'woocommerce' );
+    echo '</span></span></div>';
     if (!$product->is_type('variable') && is_user_logged_in()) {
       woocommerce_template_loop_add_to_cart();
       return;
@@ -347,6 +374,33 @@ class WWSC_Plugin
     if (is_user_logged_in()) {
       woocommerce_template_single_add_to_cart();
     }
+  }
+
+  /**
+   * Filter the variations from the store products.
+   *
+   * Filter the variations according to the conditions from products_by_user_role method above.
+   *
+   * @since: 1.0.0
+   *
+   * @see wp_get_current_user function is relied on
+	 * @link https://developer.wordpress.org/reference/functions/wp_get_current_user/
+   *
+   * @see is_user_logged_in function is relied on
+	 * @link https://developer.wordpress.org/reference/functions/is_user_logged_in/
+   *
+   * @global object $product Stores the data of the product for WC template.
+   */
+  public function filter_variations($bool, $variation_id, $product_id, $variation) {
+    $current_user = wp_get_current_user();
+    $starting = substr($variation->sku, 0, 4);
+    if (is_user_logged_in() && !in_array('b2b_retail', $current_user->roles) && $starting === '102-') {
+      return true;
+    } else if (is_user_logged_in() && in_array('b2b_retail', $current_user->roles)) {
+      return true;
+    } else if (!is_user_logged_in() && $starting === '101-') {
+      return false;
+    } else return false;
   }
 }
 $wwsc = new WWSC_Plugin();

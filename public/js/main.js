@@ -10,6 +10,7 @@ jQuery( document ).ready( function( $ ) {
     data: {
       'action': 'AJAX_actions',
       'nonce': wwsc_object.nonce,
+      'product_id': wwsc_object.product_id
     },
     beforeSend: function() {
       $( '.wwsc-widget' ).html( '<div class="loader"></div>' );
