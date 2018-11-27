@@ -273,7 +273,7 @@ class WWSC_Plugin
       'return'  => 'objects',
     );
     $current_user = wp_get_current_user();
-    if (! in_array('b2b_retail', $current_user->roles)) {
+    if (! current_user_can('administrator') && ! in_array('b2b_retail', $current_user->roles)) {
       // shows all the products that have sku with 102-
       $args['meta_key'] = '_sku';
       $args['meta_value'] = '^102-';
@@ -319,8 +319,8 @@ class WWSC_Plugin
     }
     if (is_user_logged_in()) {
       // [by default] (a) the meta query shows all products
-      $current_user = wp_get_current_user();
-      if (!in_array('b2b_retail', $current_user->roles)) {
+      global $current_user;
+      if (! current_user_can('administrator') && ! in_array('b2b_retail', $current_user->roles)) {
         // (b) shows all the products that have sku with 102-
         $meta_query[] = array(
           'key' => '_sku',
@@ -360,7 +360,7 @@ class WWSC_Plugin
     <span class="sku">';
     echo ( $sku = $product->get_sku() ) ? $sku : esc_html__( 'N/A', 'woocommerce' );
     echo '</span></span></div>';
-    if (!$product->is_type('variable') && is_user_logged_in()) {
+    if (! $product->is_type('variable') && is_user_logged_in()) {
       woocommerce_template_loop_add_to_cart();
       return;
     }
@@ -383,15 +383,16 @@ class WWSC_Plugin
 	 * @link https://developer.wordpress.org/reference/functions/is_user_logged_in/
    *
    * @global object $product Stores the data of the product for WC template.
+   * @global object $current_user Stores the data of the user.
    */
   public function filter_variations($bool, $variation_id, $product_id, $variation) {
-    $current_user = wp_get_current_user();
+    global $current_user;
     $starting = substr($variation->sku, 0, 4);
-    if (is_user_logged_in() && !in_array('b2b_retail', $current_user->roles) && $starting === '102-') {
+    if (is_user_logged_in() && ! current_user_can('administrator') && ! in_array('b2b_retail', $current_user->roles) && $starting === '102-') {
       return true;
     } else if (is_user_logged_in() && in_array('b2b_retail', $current_user->roles)) {
       return true;
-    } else if (!is_user_logged_in() && $starting === '101-') {
+    } else if (! is_user_logged_in() && $starting === '101-') {
       return false;
     } else {
       return false;
