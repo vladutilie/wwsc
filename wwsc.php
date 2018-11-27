@@ -233,9 +233,6 @@ class WWSC_Plugin
 	 * @see get_post function relied on
 	 * @link https://developer.wordpress.org/reference/functions/get_post/
 	 *
-	 * @see wp_get_current_user function relied on
-	 * @link https://developer.wordpress.org/reference/functions/wp_get_current_user/
-	 *
 	 * @see get_post_custom function relied on
 	 * @link https://developer.wordpress.org/reference/functions/get_post_custom/
 	 *
@@ -243,6 +240,7 @@ class WWSC_Plugin
 	 * @link https://developer.wordpress.org/reference/functions/wp_die/
 	 *
 	 * @global object $post Stores the data of the product.
+	 * @global object $current_user Stores the data of the user.
 	 */
   public function variations_actions() {
     ob_start();
@@ -253,7 +251,7 @@ class WWSC_Plugin
     }
 
     // Set $post global so its available, like within the admin screens
-    global $post;
+    global $post, $current_user;
     $loop           = 0;
     $product_id     = absint($_POST['product_id']);
     $post           = get_post($product_id);
@@ -272,7 +270,6 @@ class WWSC_Plugin
       ),
       'return'  => 'objects',
     );
-    $current_user = wp_get_current_user();
     if (! current_user_can('administrator') && ! in_array('b2b_retail', $current_user->roles)) {
       // shows all the products that have sku with 102-
       $args['meta_key'] = '_sku';
@@ -309,6 +306,7 @@ class WWSC_Plugin
 	 * @link https://developer.wordpress.org/reference/functions/wp_get_current_user/
 	 *
 	 * @param object $query The query of the WC loop.
+	 * @global object $current_user Stores the data of the user.
 	 */
   public function products_by_user_role($query)
   {
@@ -376,8 +374,8 @@ class WWSC_Plugin
    *
    * @since: 1.0.0
    *
-   * @see wp_get_current_user function is relied on
-	 * @link https://developer.wordpress.org/reference/functions/wp_get_current_user/
+   * @see current_user_can function is relied on
+	 * @link https://developer.wordpress.org/reference/functions/current_user_can/
    *
    * @see is_user_logged_in function is relied on
 	 * @link https://developer.wordpress.org/reference/functions/is_user_logged_in/
@@ -386,14 +384,14 @@ class WWSC_Plugin
    * @global object $current_user Stores the data of the user.
    */
   public function filter_variations($bool, $variation_id, $product_id, $variation) {
+    if (current_user_can('administrator')) {
+      return true;
+    }
     global $current_user;
     $starting = substr($variation->sku, 0, 4);
-    if (is_user_logged_in() && ! current_user_can('administrator') && ! in_array('b2b_retail', $current_user->roles) && $starting === '102-') {
+    if (is_user_logged_in() && ! in_array('b2b_retail', $current_user->roles) && $starting === '102-' ||
+        in_array('b2b_retail', $current_user->roles)) {
       return true;
-    } else if (is_user_logged_in() && in_array('b2b_retail', $current_user->roles)) {
-      return true;
-    } else if (! is_user_logged_in() && $starting === '101-') {
-      return false;
     } else {
       return false;
     }
