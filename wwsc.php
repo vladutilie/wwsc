@@ -156,12 +156,6 @@ class WWSC_Plugin
             the_title('<h2 class="woocommerce-loop-product__title">', '</h2>');
             echo '<span class="price">'. $product->get_price_html() .'</span>';
           echo '</a><br />';
-
-          echo '<div class="product_meta">
-            <span class="sku_wrapper">'. esc_html_e( 'SKU:', 'woocommerce' ) .'
-              <span class="sku">';
-          echo ( $sku = $product->get_sku() ) ? $sku : esc_html__( 'N/A', 'woocommerce' );
-          echo '</span></span></div>';
           $this->new_template_loop_add_to_cart();
         echo '</div>';
 			}
