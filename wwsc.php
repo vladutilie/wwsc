@@ -140,31 +140,49 @@ class WWSC_Plugin
 	public function AJAX_actions()
   {
 		check_ajax_referer('WWSC-widget-nonce', 'nonce');
-    echo '<ul class="products" style="display: none;">';
-    $product_id = $_GET['product_id'];
-    $args = array(
-      'p' => $product_id,
-      'post_type' => 'product',
-    );
-		$wc_query = new WP_Query($args);
-		if ($wc_query->have_posts()) {
-			while ($wc_query->have_posts()) {
-        $wc_query->the_post();
-        global $product;
-        echo '<div class="product">';
-          echo '<a href="'. get_permalink( $wc_query->post->ID ) .'" class="woocommerce-LoopProduct-link woocommerce-loop-product__link">';
-          echo woocommerce_get_product_thumbnail();
-            the_title('<h2 class="woocommerce-loop-product__title">', '</h2>');
-            echo '<span class="price">'. $product->get_price_html() .'</span>';
-          echo '</a><br />';
-          $this->new_template_loop_add_to_cart();
-        echo '</div>';
-			}
-		} else {
-			_e('The product ID does not exist.', 'wwsc');
-		}
-		wp_reset_postdata();
-    echo '</ul><!-- .products -->';
+    $product_id = absint($_GET['product_id']);
+    $product = wc_get_product($product_id);
+    $variations = $product->get_available_variations();
+    ?>
+    <table>
+      <tbody>
+        <?php
+        foreach ($variations as $key => $value) : ?>
+          <tr>
+            <td>
+              <?php echo $value['sku']; ?>
+            </td>
+            <td>
+              <?php echo implode(' ', $value['attributes']); ?>
+            </td>
+            <td>
+              <?php echo wc_price($value['display_price']); ?>
+            </td>
+            <?php if (is_user_logged_in()) : ?>
+            <td>
+              <form action="<?php echo esc_url( $product->add_to_cart_url() ); ?>" method="post" enctype="multipart/form-data">
+              <input type="hidden" name="variation_id" value="<?php echo $value['variation_id']; ?>" />
+              <input type="hidden" name="product_id" value="<?php echo esc_attr( $product_id ); ?>" />
+              <input type="hidden" name="add-to-cart" value="<?php echo esc_attr( $product_id ); ?>" />
+              <?php
+              if (! empty($value['attributes'])) :
+                foreach ($value['attributes'] as $attr_key => $attr_value) : ?>
+                  <input type="hidden" name="<?php echo $attr_key; ?>" value="<?php echo $attr_value; ?>">
+                  <?php
+                endforeach;
+              endif;
+              woocommerce_quantity_input(array(), $product); ?>
+              <button type="submit" class="single_add_to_cart_button button alt ajax_add_to_cart"><?php echo apply_filters('single_add_to_cart_text', __('Add to cart', 'woocommerce'), $product->product_type); ?></button>
+              </form>
+            </td>
+          <?php endif; ?>
+          </tr>
+          <?php
+        endforeach;
+        ?>
+      </tbody>
+    </table>
+    <?php
     die();
   }
 
