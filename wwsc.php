@@ -41,7 +41,6 @@ class WWSC_Plugin
 	 */
   public function __construct() {
     // Init actions
-    add_action('init', array($this, 'remove_qty_add_to_cart'));
     add_action('widgets_init', array($this, 'register_widget'));
     add_action('plugins_loaded', array($this, 'i18n'));
 
@@ -52,6 +51,7 @@ class WWSC_Plugin
     add_action('wp_ajax_variations_actions', array($this, 'variations_actions'));
 
     // WooCommerce Hooks
+    add_action('woocommerce_single_product_summary', array($this, 'remove_qty_add_to_cart'));
     add_action('woocommerce_product_query', array($this, 'products_by_user_role'));
     remove_action('woocommerce_after_shop_loop_item', 'woocommerce_template_loop_add_to_cart', 10);
     add_action('woocommerce_after_shop_loop_item', array($this, 'new_template_loop_add_to_cart'));
@@ -59,6 +59,7 @@ class WWSC_Plugin
     add_filter('woocommerce_get_variation_price', array($this, 'filter_variations'), 10, 4);
     add_filter('woocommerce_get_variation_sale_price', array($this, 'filter_variations'), 10, 4);
     add_filter('woocommerce_get_variation_regular_price', array($this, 'filter_variations'), 10, 4);
+
   }
 
   /**
@@ -78,7 +79,7 @@ class WWSC_Plugin
   public function remove_qty_add_to_cart()
   {
     if (! is_user_logged_in()) {
-      remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30);
+      remove_action( 'woocommerce_single_variation', 'woocommerce_single_variation_add_to_cart_button', 20 );
     }
   }
 
@@ -246,7 +247,7 @@ class WWSC_Plugin
     ob_start();
     check_ajax_referer('WWSC-variations-nonce', 'security');
 
-    if (! current_user_can('edit_products') || empty($_POST['product_id'])) {
+    if (! current_user_can('manage_woocommerce') || empty($_POST['product_id'])) {
       wp_die(-1);
     }
 
@@ -270,7 +271,7 @@ class WWSC_Plugin
       ),
       'return'  => 'objects',
     );
-    if (! current_user_can('administrator') && ! in_array('b2b_retail', $current_user->roles)) {
+    if (! current_user_can('manage_woocommerce') && ! in_array('b2b_retail', $current_user->roles)) {
       // shows all the products that have sku with 102-
       $args['meta_key'] = '_sku';
       $args['meta_value'] = '^102-';
@@ -318,7 +319,7 @@ class WWSC_Plugin
     if (is_user_logged_in()) {
       // [by default] (a) the meta query shows all products
       global $current_user;
-      if (! current_user_can('administrator') && ! in_array('b2b_retail', $current_user->roles)) {
+      if (! current_user_can('manage_woocommerce') && ! in_array('b2b_retail', $current_user->roles)) {
         // (b) shows all the products that have sku with 102-
         $meta_query[] = array(
           'key' => '_sku',
@@ -332,6 +333,7 @@ class WWSC_Plugin
         'key' => '_sku',
         'value' => '^101-',
         'compare' => 'NOT REGEXP',
+        'type' => 'string',
       );
     }
     $query->set('meta_query', $meta_query);
@@ -384,13 +386,15 @@ class WWSC_Plugin
    * @global object $current_user Stores the data of the user.
    */
   public function filter_variations($bool, $variation_id, $product_id, $variation) {
-    if (current_user_can('administrator')) {
+    if (current_user_can('manage_woocommerce')) {
       return true;
     }
     global $current_user;
     $starting = substr($variation->sku, 0, 4);
+  //echo $starting;
     if (is_user_logged_in() && ! in_array('b2b_retail', $current_user->roles) && $starting === '102-' ||
-        in_array('b2b_retail', $current_user->roles)) {
+        in_array('b2b_retail', $current_user->roles) ||
+        ! is_user_logged_in() && $starting != '101-') {
       return true;
     } else {
       return false;
